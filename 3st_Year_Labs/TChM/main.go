@@ -31,6 +31,7 @@ func numNorm(result []int) *big.Int {
 	return number
 }
 
+// Быстрое возведение в квадрат
 func quickSquare(x *big.Int) *big.Int {
 	num := numInArray(x)
 
@@ -57,8 +58,29 @@ func quickSquare(x *big.Int) *big.Int {
 	return numNorm(result)
 }
 
+// Дихотомический алгоритм возведения в степень
+func exponentiation(x, y *big.Int) *big.Int {
+	binaryY := y.Text(2)
+	q := new(big.Int).Set(x)
+	z := big.NewInt(1)
+
+	if binaryY[len(binaryY)-1] == '1' {
+		z.Set(x)
+	}
+
+	for i := len(binaryY) - 2; i >= 0; i-- {
+		q = quickSquare(q)
+		if binaryY[i] == '1' {
+			z.Mul(z, q)
+		}
+	}
+
+	return z
+}
+
 func main() {
 	var x string
+	var y string
 
 	fmt.Print("Введите число x: ")
 	_, errX := fmt.Scan(&x)
@@ -67,8 +89,22 @@ func main() {
 		return
 	}
 
+	fmt.Print("Введите степень y: ")
+	_, errY := fmt.Scan(&y)
+	if errY != nil {
+		fmt.Println("Ошибка ввода y:", errY)
+		return
+	}
+
+	power := new(big.Int)
+	power, ok := power.SetString(y, 10)
+	if !ok {
+		fmt.Println("Ошибка преобразования числа.")
+		return
+	}
+
 	num := new(big.Int)
-	num, ok := num.SetString(x, 10)
+	num, ok = num.SetString(x, 10)
 	if !ok {
 		fmt.Println("Ошибка преобразования числа.")
 		return
@@ -82,14 +118,29 @@ func main() {
 	quickSquareResult := quickSquare(num)
 	quickSquareTime := time.Since(startTime)
 
+	startTime = time.Now()
+	nativePow := new(big.Int).Exp(num, power, nil)
+	nativePowTime := time.Since(startTime)
+
+	startTime = time.Now()
+	quickPow := exponentiation(num, power)
+	quickPowTime := time.Since(startTime)
+
 	fmt.Println("\n--- Результаты ---")
 	fmt.Println("Обычный квадрат:", normalSquare.String(), "| Время:", normalSquareTime)
 	fmt.Println("Быстрый квадрат:", quickSquareResult.String(), "| Время:", quickSquareTime)
+	fmt.Println("Обычное возведение в степень:", nativePow.String(), "| Время:", nativePowTime)
+	fmt.Println("Быстрое возведение в степень:", quickPow.String(), "| Время:", quickPowTime)
 
 	fmt.Println("\n--- Сравнение скорости ---")
 	if quickSquareTime < normalSquareTime {
 		fmt.Println("Быстрое возведение в квадрат быстрее ✅")
 	} else {
 		fmt.Println("Обычное возведение в квадрат быстрее ✅")
+	}
+	if quickPowTime < nativePowTime {
+		fmt.Println("Быстрое возведение в степень быстрее ✅")
+	} else {
+		fmt.Println("Обычное возведение в степень быстрее ✅")
 	}
 }
