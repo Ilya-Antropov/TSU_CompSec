@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/big"
+	"math/rand"
 	"strconv"
 	"time"
 )
@@ -31,7 +33,7 @@ func numNorm(result []int) *big.Int {
 	return number
 }
 
-// Быстрое возведение в квадрат
+// Быстрое возведение в квадрат (1)
 func quickSquare(x *big.Int) *big.Int {
 	num := numInArray(x)
 
@@ -58,7 +60,7 @@ func quickSquare(x *big.Int) *big.Int {
 	return numNorm(result)
 }
 
-// Дихотомический алгоритм возведения в степень
+// Дихотомический алгоритм возведения в степень (2)
 func exponentiation(x, y *big.Int) *big.Int {
 	binaryY := y.Text(2)
 	q := new(big.Int).Set(x)
@@ -94,7 +96,7 @@ func exponentiation(x, y *big.Int) *big.Int {
 	return z
 }*/
 
-// Алгоритм Барретта приведения чисел по модулю.
+// Алгоритм Барретта приведения чисел по модулю. (3)
 func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 	if m.Sign() == 0 {
 		return nil, fmt.Errorf("модуль не может быть нулём")
@@ -131,6 +133,69 @@ func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 	}
 
 	return rPrime, nil
+}
+
+func probabilityOfErrorFerma(num *big.Int, t int) float64 {
+	phi := eulerPhi(num)
+	ratio := new(big.Rat).SetFrac(phi, num)
+	floatRatio, _ := ratio.Float64()
+	return math.Pow(floatRatio, float64(t))
+}
+
+func eulerPhi(n *big.Int) *big.Int {
+	if n.Cmp(big.NewInt(1)) == 0 {
+		return big.NewInt(1)
+	}
+
+	result := new(big.Int).Set(n)
+	m := new(big.Int).Set(n)
+
+	for i := big.NewInt(2); new(big.Int).Mul(i, i).Cmp(m) <= 0; i.Add(i, big.NewInt(1)) {
+		if new(big.Int).Mod(m, i).Cmp(big.NewInt(0)) == 0 {
+			for new(big.Int).Mod(m, i).Cmp(big.NewInt(0)) == 0 {
+				m.Div(m, i)
+			}
+			result.Sub(result, new(big.Int).Div(result, i))
+		}
+	}
+
+	if m.Cmp(big.NewInt(1)) > 0 {
+		result.Sub(result, new(big.Int).Div(result, m))
+	}
+
+	return result
+}
+
+// Тест Ферма проверки числа на простоту. Оценить вероятность ошибки. (4)
+func testFerma(num *big.Int) string {
+	if num.Bit(0) == 0 {
+		panic("Число чётное")
+	}
+
+	const t = 5
+	rand.Seed(time.Now().UnixNano())
+
+	for i := 0; i < t; i++ {
+		a := new(big.Int)
+		max := new(big.Int).Sub(num, big.NewInt(2))
+		if num.Cmp(big.NewInt(4)) > 0 {
+			a.Rand(rand.New(rand.NewSource(time.Now().UnixNano())), max)
+			a.Add(a, big.NewInt(2))
+		} else {
+			a.Set(big.NewInt(2))
+		}
+
+		exponent := new(big.Int).Sub(num, big.NewInt(1))
+		pow := exponentiation(a, exponent)
+		mod := new(big.Int).Mod(pow, num)
+
+		if mod.Cmp(big.NewInt(1)) != 0 {
+			return "Составное"
+		}
+	}
+
+	prError := probabilityOfErrorFerma(num, t)
+	return fmt.Sprintf("Простое, Вероятность ошибки - %.6f", prError)
 }
 
 func main() {
@@ -228,11 +293,8 @@ func main() {
 	} else {
 		fmt.Println("Барретт:", barrettRes.String(), "| Время:", barrettTime)
 		fmt.Println("Обычный x mod m:", nativeMod.String(), "| Время:", nativeModTime)
-		if barrettRes.Cmp(nativeMod) == 0 {
-			fmt.Println("✅ Результаты совпадают.")
-		} else {
-			fmt.Println("❌ Результаты не совпадают.")
-		}
 	}
 
+	fmt.Println("\n--- Тест Ферма ---")
+	fmt.Println("Результат теста:", testFerma(num))
 }
