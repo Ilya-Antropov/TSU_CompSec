@@ -135,30 +135,38 @@ func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 	return rPrime, nil
 }
 
-func probabilityOfErrorFerma(num *big.Int, t int) float64 {
-	phi := eulerPhi(num)
-	ratio := new(big.Rat).SetFrac(phi, num)
-	floatRatio, _ := ratio.Float64()
-	return math.Pow(floatRatio, float64(t))
-}
-
 func eulerPhi(n *big.Int) *big.Int {
-	if n.Cmp(big.NewInt(1)) == 0 {
-		return big.NewInt(1)
+	if n.ProbablyPrime(5) { // Если n простое, φ(n) = n-1
+		return new(big.Int).Sub(n, big.NewInt(1))
 	}
 
 	result := new(big.Int).Set(n)
 	m := new(big.Int).Set(n)
 
-	for i := big.NewInt(2); new(big.Int).Mul(i, i).Cmp(m) <= 0; i.Add(i, big.NewInt(1)) {
-		if new(big.Int).Mod(m, i).Cmp(big.NewInt(0)) == 0 {
-			for new(big.Int).Mod(m, i).Cmp(big.NewInt(0)) == 0 {
-				m.Div(m, i)
-			}
-			result.Sub(result, new(big.Int).Div(result, i))
+	// Проверка делимости на 2 отдельно
+	if m.Bit(0) == 0 {
+		result.Sub(result, new(big.Int).Div(result, big.NewInt(2)))
+		for m.Bit(0) == 0 {
+			m.Rsh(m, 1)
 		}
 	}
 
+	// Перебор нечётных делителей (начиная с 3)
+	i := big.NewInt(3)
+	sqrt := new(big.Int).Sqrt(m)
+	for i.Cmp(sqrt) <= 0 {
+		mod := new(big.Int)
+		if mod.Mod(m, i).Cmp(big.NewInt(0)) == 0 {
+			result.Sub(result, new(big.Int).Div(result, i))
+			for mod.Mod(m, i).Cmp(big.NewInt(0)) == 0 {
+				m.Div(m, i)
+			}
+			sqrt.Sqrt(m) // Обновляем √m после деления
+		}
+		i.Add(i, big.NewInt(2)) // Пропускаем чётные
+	}
+
+	// Если остался простой делитель > √m
 	if m.Cmp(big.NewInt(1)) > 0 {
 		result.Sub(result, new(big.Int).Div(result, m))
 	}
@@ -169,34 +177,34 @@ func eulerPhi(n *big.Int) *big.Int {
 // Тест Ферма проверки числа на простоту. Оценить вероятность ошибки. (4)
 func testFerma(num *big.Int) string {
 	if num.Bit(0) == 0 {
-		panic("Число чётное")
+		return "Составное (чётное)"
 	}
 
 	const t = 5
-	rand.Seed(time.Now().UnixNano())
+	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 0; i < t; i++ {
 		a := new(big.Int)
 		max := new(big.Int).Sub(num, big.NewInt(2))
-		if num.Cmp(big.NewInt(4)) > 0 {
-			a.Rand(rand.New(rand.NewSource(time.Now().UnixNano())), max)
-			a.Add(a, big.NewInt(2))
-		} else {
-			a.Set(big.NewInt(2))
-		}
+		a.Rand(randGen, max).Add(a, big.NewInt(2)) // a ∈ [2, n-1]
 
-		exponent := new(big.Int).Sub(num, big.NewInt(1))
-		pow := exponentiation(a, exponent)
-		mod := new(big.Int).Mod(pow, num)
-
-		if mod.Cmp(big.NewInt(1)) != 0 {
+		if new(big.Int).Exp(a, new(big.Int).Sub(num, big.NewInt(1)), num).Cmp(big.NewInt(1)) != 0 {
 			return "Составное"
 		}
 	}
 
-	prError := probabilityOfErrorFerma(num, t)
+	// Вычисляем вероятность ошибки через φ(n)
+	phi := eulerPhi(num)
+	ratio := new(big.Rat).SetFrac(phi, num)
+	floatRatio, _ := ratio.Float64()
+	prError := math.Pow(floatRatio, float64(t))
+
 	return fmt.Sprintf("Простое, Вероятность ошибки - %.6f", prError)
 }
+
+// Тест Миллера-Рабина проверки чилса на простату. Оценить вероятность ошибки.(5.1)
+
+// Тест Соловея-Штрассена проверки чилса на простату. Оценить вероятность ошибки.(5.2)
 
 func main() {
 	var x string
@@ -244,56 +252,55 @@ func main() {
 		fmt.Println("Ошибка преобразования числа.")
 		return
 	}
+	/*
+		startTime := time.Now()
+		normalSquare := new(big.Int).Mul(num, num)
+		normalSquareTime := time.Since(startTime)
 
-	startTime := time.Now()
-	normalSquare := new(big.Int).Mul(num, num)
-	normalSquareTime := time.Since(startTime)
+		startTime = time.Now()
+		quickSquareResult := quickSquare(num)
+		quickSquareTime := time.Since(startTime)
 
-	startTime = time.Now()
-	quickSquareResult := quickSquare(num)
-	quickSquareTime := time.Since(startTime)
+		startTime = time.Now()
+		nativePow := new(big.Int).Exp(num, power, nil)
+		nativePowTime := time.Since(startTime)
 
-	startTime = time.Now()
-	nativePow := new(big.Int).Exp(num, power, nil)
-	nativePowTime := time.Since(startTime)
+		startTime = time.Now()
+		quickPow := exponentiation(num, power)
+		quickPowTime := time.Since(startTime)
 
-	startTime = time.Now()
-	quickPow := exponentiation(num, power)
-	quickPowTime := time.Since(startTime)
+		startTime = time.Now()
+		barrettRes, err := barrett(quickPow, mod, 10)
+		barrettTime := time.Since(startTime)
 
-	startTime = time.Now()
-	barrettRes, err := barrett(quickPow, mod, 10)
-	barrettTime := time.Since(startTime)
+		startTime = time.Now()
+		nativeMod := new(big.Int).Mod(quickPow, mod)
+		nativeModTime := time.Since(startTime)*/
 
-	startTime = time.Now()
-	nativeMod := new(big.Int).Mod(quickPow, mod)
-	nativeModTime := time.Since(startTime)
+	/*	fmt.Println("\n--- Результаты ---")
+		fmt.Println("Обычный квадрат:", normalSquare.String(), "| Время:", normalSquareTime)
+		fmt.Println("Быстрый квадрат:", quickSquareResult.String(), "| Время:", quickSquareTime)
+		fmt.Println("Обычное возведение в степень:", nativePow.String(), "| Время:", nativePowTime)
+		fmt.Println("Быстрое возведение в степень:", quickPow.String(), "| Время:", quickPowTime)
 
-	fmt.Println("\n--- Результаты ---")
-	fmt.Println("Обычный квадрат:", normalSquare.String(), "| Время:", normalSquareTime)
-	fmt.Println("Быстрый квадрат:", quickSquareResult.String(), "| Время:", quickSquareTime)
-	fmt.Println("Обычное возведение в степень:", nativePow.String(), "| Время:", nativePowTime)
-	fmt.Println("Быстрое возведение в степень:", quickPow.String(), "| Время:", quickPowTime)
+		fmt.Println("\n--- Сравнение скорости ---")
+		if quickSquareTime < normalSquareTime {
+			fmt.Println("Быстрое возведение в квадрат быстрее ✅")
+		} else {
+			fmt.Println("Обычное возведение в квадрат быстрее ✅")
+		}
+		if quickPowTime < nativePowTime {
+			fmt.Println("Быстрое возведение в степень быстрее ✅")
+		} else {
+			fmt.Println("Обычное возведение в степень быстрее ✅")
+		}
 
-	fmt.Println("\n--- Сравнение скорости ---")
-	if quickSquareTime < normalSquareTime {
-		fmt.Println("Быстрое возведение в квадрат быстрее ✅")
-	} else {
-		fmt.Println("Обычное возведение в квадрат быстрее ✅")
-	}
-	if quickPowTime < nativePowTime {
-		fmt.Println("Быстрое возведение в степень быстрее ✅")
-	} else {
-		fmt.Println("Обычное возведение в степень быстрее ✅")
-	}
-
-	fmt.Println("\n--- Результат Барретта ---")
-	if err != nil {
-		fmt.Println("Ошибка в алгоритме Барретта:", err)
-	} else {
-		fmt.Println("Барретт:", barrettRes.String(), "| Время:", barrettTime)
-		fmt.Println("Обычный x mod m:", nativeMod.String(), "| Время:", nativeModTime)
-	}
+		fmt.Println("\n--- Результат Барретта ---")
+		if err != nil {
+			fmt.Println("Ошибка в алгоритме Барретта:", err)
+		} else {
+			fmt.Println("Барретт:", barrettRes.String(), "| Время:", barrettTime)
+			fmt.Println("Обычный x mod m:", nativeMod.String(), "| Время:", nativeModTime) }*/
 
 	fmt.Println("\n--- Тест Ферма ---")
 	fmt.Println("Результат теста:", testFerma(num))
