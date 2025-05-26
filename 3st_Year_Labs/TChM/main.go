@@ -9,6 +9,21 @@ import (
 	"time"
 )
 
+const (
+	iterations = 25
+)
+
+func powMod(a, b, m *big.Int) *big.Int {
+	return new(big.Int).Exp(a, b, m)
+}
+
+func randomInRange(min, max *big.Int) *big.Int {
+	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
+	diff := new(big.Int).Sub(max, min)
+	randNum := new(big.Int).Rand(randGen, diff)
+	return randNum.Add(randNum, min)
+}
+
 func numInArray(x *big.Int) []int {
 	strNum := x.String()
 	n := len(strNum)
@@ -80,22 +95,6 @@ func exponentiation(x, y *big.Int) *big.Int {
 	return z
 }
 
-/*func exponentiationLeftToRightClassic(x, y *big.Int) *big.Int {
-	binaryY := y.Text(2)
-	z := new(big.Int).Set(x) // z = x, так как yₙ₋₁ = 1 по условию
-
-	// Итерируемся по битам от второго слева до последнего (вправо)
-	for i := 1; i < len(binaryY); i++ {
-		z = quickSquare(z) // z = z^2
-
-		if binaryY[i] == '1' {
-			z.Mul(z, x) // z = z * x
-		}
-	}
-
-	return z
-}*/
-
 // Алгоритм Барретта приведения чисел по модулю. (3)
 func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 	if m.Sign() == 0 {
@@ -115,7 +114,7 @@ func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 	bPow2k := exponentiation(base, big.NewInt(2*k))
 	z := new(big.Int).Div(bPow2k, m)
 
-	xDiv := new(big.Int).Div(x, exponentiation(base, big.NewInt(k-1))) // часть q'
+	xDiv := new(big.Int).Div(x, exponentiation(base, big.NewInt(k-1)))
 	qMul := new(big.Int).Mul(xDiv, z)
 	qPrime := new(big.Int).Div(qMul, exponentiation(base, big.NewInt(k+1)))
 
@@ -136,14 +135,13 @@ func barrett(x, m *big.Int, b int64) (*big.Int, error) {
 }
 
 func eulerPhi(n *big.Int) *big.Int {
-	if n.ProbablyPrime(5) { // Если n простое, φ(n) = n-1
+	if n.ProbablyPrime(5) {
 		return new(big.Int).Sub(n, big.NewInt(1))
 	}
 
 	result := new(big.Int).Set(n)
 	m := new(big.Int).Set(n)
 
-	// Проверка делимости на 2 отдельно
 	if m.Bit(0) == 0 {
 		result.Sub(result, new(big.Int).Div(result, big.NewInt(2)))
 		for m.Bit(0) == 0 {
@@ -151,7 +149,6 @@ func eulerPhi(n *big.Int) *big.Int {
 		}
 	}
 
-	// Перебор нечётных делителей (начиная с 3)
 	i := big.NewInt(3)
 	sqrt := new(big.Int).Sqrt(m)
 	for i.Cmp(sqrt) <= 0 {
@@ -161,12 +158,11 @@ func eulerPhi(n *big.Int) *big.Int {
 			for mod.Mod(m, i).Cmp(big.NewInt(0)) == 0 {
 				m.Div(m, i)
 			}
-			sqrt.Sqrt(m) // Обновляем √m после деления
+			sqrt.Sqrt(m)
 		}
-		i.Add(i, big.NewInt(2)) // Пропускаем чётные
+		i.Add(i, big.NewInt(2))
 	}
 
-	// Если остался простой делитель > √m
 	if m.Cmp(big.NewInt(1)) > 0 {
 		result.Sub(result, new(big.Int).Div(result, m))
 	}
@@ -175,9 +171,15 @@ func eulerPhi(n *big.Int) *big.Int {
 }
 
 // Тест Ферма проверки числа на простоту. Оценить вероятность ошибки. (4)
-func testFerma(num *big.Int) string {
+func testFerma(num *big.Int) (string, time.Duration) {
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		fmt.Printf("Время выполнения теста Ферма: %v\n", elapsed)
+	}()
+
 	if num.Bit(0) == 0 {
-		return "Составное (чётное)"
+		return "Составное (чётное)", 0
 	}
 
 	const t = 5
@@ -186,34 +188,174 @@ func testFerma(num *big.Int) string {
 	for i := 0; i < t; i++ {
 		a := new(big.Int)
 		max := new(big.Int).Sub(num, big.NewInt(2))
-		a.Rand(randGen, max).Add(a, big.NewInt(2)) // a ∈ [2, n-1]
+		a.Rand(randGen, max).Add(a, big.NewInt(2))
 
 		if new(big.Int).Exp(a, new(big.Int).Sub(num, big.NewInt(1)), num).Cmp(big.NewInt(1)) != 0 {
-			return "Составное"
+			return "Составное", 0
 		}
 	}
 
-	// Вычисляем вероятность ошибки через φ(n)
 	phi := eulerPhi(num)
 	ratio := new(big.Rat).SetFrac(phi, num)
 	floatRatio, _ := ratio.Float64()
 	prError := math.Pow(floatRatio, float64(t))
 
-	return fmt.Sprintf("Простое, Вероятность ошибки - %.6f", prError)
+	return fmt.Sprintf("Простое (вероятность ошибки: %.6f)", prError), 0
+}
+
+func jacobiSymbol(a, n *big.Int) int {
+	if a.Cmp(big.NewInt(0)) == 0 {
+		return 0
+	}
+	if a.Cmp(big.NewInt(1)) == 0 {
+		return 1
+	}
+
+	k := big.NewInt(0)
+	aCopy := new(big.Int).Set(a)
+	two := big.NewInt(2)
+	zero := big.NewInt(0)
+
+	for new(big.Int).Mod(aCopy, two).Cmp(zero) == 0 {
+		aCopy = new(big.Int).Div(aCopy, two)
+		k.Add(k, big.NewInt(1))
+	}
+
+	s := 1
+	if new(big.Int).Mod(k, two).Cmp(zero) != 0 {
+		nMod8 := new(big.Int).Mod(n, big.NewInt(8))
+		if nMod8.Cmp(big.NewInt(1)) == 0 || nMod8.Cmp(big.NewInt(7)) == 0 {
+			s = 1
+		} else {
+			s = -1
+		}
+	}
+
+	if new(big.Int).Mod(n, big.NewInt(4)).Cmp(big.NewInt(3)) == 0 &&
+		new(big.Int).Mod(aCopy, big.NewInt(4)).Cmp(big.NewInt(3)) == 0 {
+		s = -s
+	}
+
+	if aCopy.Cmp(big.NewInt(1)) == 0 {
+		return s
+	} else {
+		return s * jacobiSymbol(new(big.Int).Mod(n, aCopy), aCopy)
+	}
 }
 
 // Тест Миллера-Рабина проверки чилса на простату. Оценить вероятность ошибки.(5.1)
+func millerRabinTest(n *big.Int, k int) (string, float64, time.Duration) {
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		fmt.Printf("Время выполнения теста Миллера-Рабина: %v\n", elapsed)
+	}()
+
+	if n.Cmp(big.NewInt(2)) < 0 {
+		return "Составное", 0, 0
+	}
+	if n.Cmp(big.NewInt(2)) == 0 || n.Cmp(big.NewInt(3)) == 0 {
+		return "Простое", 0, 0
+	}
+	if new(big.Int).Mod(n, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		return "Составное", 0, 0
+	}
+
+	d := new(big.Int).Sub(n, big.NewInt(1))
+	s := big.NewInt(0)
+	for new(big.Int).Mod(d, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		d.Div(d, big.NewInt(2))
+		s.Add(s, big.NewInt(1))
+	}
+
+	for i := 0; i < k; i++ {
+		a := randomInRange(big.NewInt(2), new(big.Int).Sub(n, big.NewInt(2)))
+		x := powMod(a, d, n)
+
+		if x.Cmp(big.NewInt(1)) == 0 || x.Cmp(new(big.Int).Sub(n, big.NewInt(1))) == 0 {
+			continue
+		}
+
+		found := false
+		for j := big.NewInt(1); j.Cmp(s) < 0; j.Add(j, big.NewInt(1)) {
+			x = powMod(x, big.NewInt(2), n)
+			if x.Cmp(new(big.Int).Sub(n, big.NewInt(1))) == 0 {
+				found = true
+				break
+			}
+			if x.Cmp(big.NewInt(1)) == 0 {
+				return "Составное", 0, 0
+			}
+		}
+
+		if !found {
+			return "Составное", 0, 0
+		}
+	}
+
+	errorProb := math.Pow(0.25, float64(k))
+	return "Простое", errorProb, 0
+}
 
 // Тест Соловея-Штрассена проверки чилса на простату. Оценить вероятность ошибки.(5.2)
+func solovayStrassenTest(n *big.Int, k int) (string, float64, time.Duration) {
+	start := time.Now()
+	defer func() {
+		elapsed := time.Since(start)
+		fmt.Printf("Время выполнения теста Соловея-Штрассена: %v\n", elapsed)
+	}()
+
+	if n.Cmp(big.NewInt(2)) < 0 {
+		return "Составное", 0, 0
+	}
+	if n.Cmp(big.NewInt(2)) == 0 || n.Cmp(big.NewInt(3)) == 0 {
+		return "Простое", 0, 0
+	}
+	if new(big.Int).Mod(n, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		return "Составное", 0, 0
+	}
+
+	for i := 0; i < k; i++ {
+		a := randomInRange(big.NewInt(2), new(big.Int).Sub(n, big.NewInt(2)))
+		exp := new(big.Int).Div(new(big.Int).Sub(n, big.NewInt(1)), big.NewInt(2))
+		x := powMod(a, exp, n)
+
+		if x.Cmp(big.NewInt(1)) != 0 && x.Cmp(new(big.Int).Sub(n, big.NewInt(1))) != 0 {
+			return "Составное", 0, 0
+		}
+
+		jacobi := jacobiSymbol(a, n)
+		var expected *big.Int
+		if jacobi == -1 {
+			expected = new(big.Int).Sub(n, big.NewInt(1))
+		} else {
+			expected = big.NewInt(int64(jacobi))
+		}
+
+		if x.Cmp(expected) != 0 {
+			return "Составное", 0, 0
+		}
+	}
+
+	errorProb := math.Pow(0.5, float64(k))
+	return "Простое", errorProb, 0
+}
 
 func main() {
-	var x string
+	var xStr string
 	var y string
 
-	fmt.Print("Введите число x: ")
-	_, errX := fmt.Scan(&x)
+	fmt.Print("Введите число для проверки на простоту: ")
+	_, errX := fmt.Scan(&xStr)
 	if errX != nil {
-		fmt.Println("Ошибка ввода x:", errX)
+		fmt.Println("Ошибка ввода:", errX)
+		return
+	}
+
+	x := new(big.Int)
+	x, ok := x.SetString(xStr, 10)
+	if !ok {
+		fmt.Println("Ошибка преобразования числа")
 		return
 	}
 
@@ -233,7 +375,7 @@ func main() {
 	}
 
 	mod := new(big.Int)
-	mod, ok := mod.SetString(mStr, 10)
+	mod, ok = mod.SetString(mStr, 10)
 	if !ok {
 		fmt.Println("Ошибка преобразования модуля.")
 		return
@@ -247,7 +389,7 @@ func main() {
 	}
 
 	num := new(big.Int)
-	num, ok = num.SetString(x, 10)
+	num, ok = num.SetString(xStr, 10)
 	if !ok {
 		fmt.Println("Ошибка преобразования числа.")
 		return
@@ -275,9 +417,9 @@ func main() {
 
 		startTime = time.Now()
 		nativeMod := new(big.Int).Mod(quickPow, mod)
-		nativeModTime := time.Since(startTime)*/
+		nativeModTime := time.Since(startTime)
 
-	/*	fmt.Println("\n--- Результаты ---")
+		fmt.Println("\n--- Результаты ---")
 		fmt.Println("Обычный квадрат:", normalSquare.String(), "| Время:", normalSquareTime)
 		fmt.Println("Быстрый квадрат:", quickSquareResult.String(), "| Время:", quickSquareTime)
 		fmt.Println("Обычное возведение в степень:", nativePow.String(), "| Время:", nativePowTime)
@@ -300,8 +442,20 @@ func main() {
 			fmt.Println("Ошибка в алгоритме Барретта:", err)
 		} else {
 			fmt.Println("Барретт:", barrettRes.String(), "| Время:", barrettTime)
-			fmt.Println("Обычный x mod m:", nativeMod.String(), "| Время:", nativeModTime) }*/
+			fmt.Println("Обычный x mod m:", nativeMod.String(), "| Время:", nativeModTime)
+		}*/
 
-	fmt.Println("\n--- Тест Ферма ---")
-	fmt.Println("Результат теста:", testFerma(num))
+	fmt.Printf("\nРезультаты тестов (количество итераций: %d):\n", iterations)
+	// Тест Ферма
+	fermaResult, _ := testFerma(x)
+	fmt.Println("- Тест Ферма:", fermaResult)
+
+	// Тест Миллера-Рабина
+	mrResult, mrError, _ := millerRabinTest(x, iterations)
+	fmt.Printf("- Тест Миллера-Рабина: %s (вероятность ошибки: ≤ %.15f)\n", mrResult, mrError)
+
+	// Тест Соловея-Штрассена
+	ssResult, ssError, _ := solovayStrassenTest(x, iterations)
+	fmt.Printf("- Тест Соловея-Штрассена: %s (вероятность ошибки: ≤ %.15f)\n", ssResult, ssError)
+
 }
