@@ -1,4 +1,4 @@
-package main
+ package main
 
 import (
 	"fmt"
@@ -394,7 +394,7 @@ func main() {
 		fmt.Println("Ошибка преобразования числа.")
 		return
 	}
-	/*
+/*
 		startTime := time.Now()
 		normalSquare := new(big.Int).Mul(num, num)
 		normalSquareTime := time.Since(startTime)
@@ -449,11 +449,9 @@ func main() {
 	// Тест Ферма
 	fermaResult, _ := testFerma(x)
 	fmt.Println("- Тест Ферма:", fermaResult)
-
 	// Тест Миллера-Рабина
 	mrResult, mrError, _ := millerRabinTest(x, iterations)
 	fmt.Printf("- Тест Миллера-Рабина: %s (вероятность ошибки: ≤ %.15f)\n", mrResult, mrError)
-
 	// Тест Соловея-Штрассена
 	ssResult, ssError, _ := solovayStrassenTest(x, iterations)
 	fmt.Printf("- Тест Соловея-Штрассена: %s (вероятность ошибки: ≤ %.15f)\n", ssResult, ssError)

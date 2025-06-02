@@ -1,0 +1,8 @@
+//
+// Created by Ilya Antropov on 29.05.2025.
+//
+
+#ifndef COMPILATIONMETHODS_LEXER_H
+#define COMPILATIONMETHODS_LEXER_H
+
+#endif //COMPILATIONMETHODS_LEXER_H
