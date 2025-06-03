@@ -1,0 +1,3 @@
+/Users/ilya/Desktop/Учеба ТГУ/TSU_CompSec/3st_Year_Labs/CompilationMethods/cmake-build-debug/CMakeFiles/CompilationMethods.dir
+/Users/ilya/Desktop/Учеба ТГУ/TSU_CompSec/3st_Year_Labs/CompilationMethods/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/ilya/Desktop/Учеба ТГУ/TSU_CompSec/3st_Year_Labs/CompilationMethods/cmake-build-debug/CMakeFiles/rebuild_cache.dir

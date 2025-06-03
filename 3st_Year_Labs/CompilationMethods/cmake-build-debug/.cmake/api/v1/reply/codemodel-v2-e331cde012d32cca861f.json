@@ -1,0 +1,60 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.30"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "CompilationMethods",
+					"targetIndexes" : 
+					[
+						0
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "CompilationMethods::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-CompilationMethods-Debug-237c323f221df40a41cf.json",
+					"name" : "CompilationMethods",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/ilya/Desktop/\u0423\u0447\u0435\u0431\u0430 \u0422\u0413\u0423/TSU_CompSec/3st_Year_Labs/CompilationMethods/cmake-build-debug",
+		"source" : "/Users/ilya/Desktop/\u0423\u0447\u0435\u0431\u0430 \u0422\u0413\u0423/TSU_CompSec/3st_Year_Labs/CompilationMethods"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}
