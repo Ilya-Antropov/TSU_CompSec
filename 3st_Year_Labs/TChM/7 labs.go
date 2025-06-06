@@ -6,17 +6,6 @@ import (
 	"math/big"
 )
 
-func main() {
-	bits := 76
-	p, err := GenerateStrongPrime(bits)
-	if err != nil {
-		fmt.Println("Error generating strong prime:", err)
-		return
-	}
-
-	fmt.Printf("Generated strong prime (%d bits):\n%v\n", p.BitLen(), p)
-}
-
 func GenerateStrongPrime(bits int) (*big.Int, error) {
 	s, err := rand.Prime(rand.Reader, bits/2)
 	if err != nil {
@@ -85,4 +74,15 @@ func computeP0(s, r *big.Int) (*big.Int, error) {
 	result.Sub(result, big.NewInt(1))
 
 	return result, nil
+}
+
+func main() {
+	bits := 120
+	p, err := GenerateStrongPrime(bits)
+	if err != nil {
+		fmt.Println("Error generating strong prime:", err)
+		return
+	}
+
+	fmt.Printf("Generated strong prime (%d bits):\n%v\n", p.BitLen(), p)
 }

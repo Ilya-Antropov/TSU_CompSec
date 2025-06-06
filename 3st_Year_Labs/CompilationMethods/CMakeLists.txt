@@ -3,5 +3,4 @@ project(CompilationMethods)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(CompilationMethods main.cpp
-        lexer.h)
+add_executable(CompilationMethods main.cpp)
