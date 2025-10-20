@@ -250,6 +250,42 @@ void run_test3(int selection) {
     }
 }
 
+bool Polynomial::primitiveness_pol() {
+    Polynomial f = *this;
+    if (f.irreducibilitypol2() == true) {
+        return false;
+    }
+    Polynomial one({1}, f.mod);
+    Polynomial x({0, 1}, f.mod);
+
+    int deg = f.degree();
+    int p = std::pow(f.mod, deg) - 1;
+
+    vector<int> factorization = PrimeFactorization(p);
+
+    int q = factorization[0];
+
+    for (int k = 0; k < factorization.size(); k++) {
+        int deg_x = p / q;
+        Polynomial r = x.pow(deg_x) % f;
+        if (r == one) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void test_primitiveness_pol() {
+    Polynomial test({2, 2, 0, 0, 0, 1}, 3);
+
+    test.print();
+    if (test.primitiveness_pol() == true) {
+        cout << "true" << endl;
+    } else {
+        cout << "false" << endl;
+    }
+}
+
 int main() {
     setlocale(LC_ALL, "Russian");
 
@@ -258,12 +294,13 @@ int main() {
     cin >> selection;
 
     if (selection > 0 && selection <= 2) {
-        run_test1(selection);
-        cout << endl;
-        run_test2(selection);
-        cout << endl;
-        run_test3(selection);
-        cout << endl;
-
+         run_test1(selection);
+         cout << endl;
+         run_test2(selection);
+         cout << endl;
+         run_test3(selection);
+         cout << endl;
+        test_primitiveness_pol();
+        return 0;
     }
 }
